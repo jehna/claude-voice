@@ -37,7 +37,7 @@ class Claude:
                 self.log(f"Sending enter")
                 self.terminal.send_key("enter")
             elif "no" in instruction.lower():
-                self.log(f"Sending ctrl-c")
+                self.log(f"Sending esc")
                 self.terminal.send_key("esc")
             else:
                 pass
