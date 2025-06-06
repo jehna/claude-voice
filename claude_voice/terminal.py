@@ -60,7 +60,7 @@ KEY_MAPPINGS = {
 class Terminal:
     """Terminal wrapper that provides API for running programs and monitoring output"""
 
-    def __init__(self, program: str = "/bin/bash", args: Optional[List[str]] = None):
+    def __init__(self, program: str = "/bin/bash", args: Optional[List[str]] = None, enable_keyboard: bool = True):
         """
         Initialize Terminal with configurable program
 
@@ -78,6 +78,7 @@ class Terminal:
         self.running = False
         self.output_thread = None
         self.input_thread = None
+        self.enable_keyboard = enable_keyboard
 
     def add_change_callback(self, callback: Callable[[str], None]):
         """
@@ -209,10 +210,11 @@ class Terminal:
 
                 # Start threads for handling I/O
                 self.output_thread = threading.Thread(target=self._handle_output, daemon=True)
-                self.input_thread = threading.Thread(target=self._handle_input, daemon=True)
+                if self.enable_keyboard:
+                    self.input_thread = threading.Thread(target=self._handle_input, daemon=True)
+                    self.input_thread.start()
 
                 self.output_thread.start()
-                self.input_thread.start()
 
         except Exception as e:
             self.running = False

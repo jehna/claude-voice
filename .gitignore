@@ -10,3 +10,6 @@ wheels/
 .venv
 
 claude-code-voice-agent
+
+*.log
+.claude

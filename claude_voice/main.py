@@ -4,8 +4,8 @@
 Main module for Claude Voice TUI wrapper
 """
 
-from .terminal import Terminal
 from .listener import AudioListener
+from .claude import Claude
 import time
 
 def main():
@@ -15,22 +15,17 @@ def main():
     audio_listener.start()
 
     time.sleep(3)
-    terminal = Terminal("/bin/bash", ["/bin/bash", "-c", "claude"])
+    claude = Claude()
 
-    def on_transcription(text):
-        terminal.send_input(text)
-        terminal.send_key("enter")
-
-    audio_listener.add_transcription_callback(on_transcription)
+    audio_listener.add_transcription_callback(claude.process_instruction)
 
     try:
-        terminal.start()
-        terminal.wait()
+        claude.start()
     except KeyboardInterrupt:
         print("\nTerminal interrupted.")
     finally:
         audio_listener.stop()
-        terminal.stop()
+        claude.stop()
 
 if __name__ == "__main__":
     main()
