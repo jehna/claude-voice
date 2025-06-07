@@ -6,8 +6,11 @@ Audio listener module for Claude Voice TUI wrapper
 
 import threading
 import logging
-from RealtimeSTT import AudioToTextRecorder
+from faster_whisper import WhisperModel
 from typing import Callable
+import time
+from .audiorecorder import AudioRecorder
+from enum import Enum
 
 logging.basicConfig(level=logging.ERROR)
 logging.getLogger("RealtimeSTT").setLevel(logging.ERROR)
@@ -15,45 +18,29 @@ logging.getLogger("transcribe").setLevel(logging.ERROR)
 logging.getLogger("faster_whisper").setLevel(logging.ERROR)
 logging.getLogger("audio_recorder").setLevel(logging.ERROR)
 
+class Model(Enum):
+    TINY = "tiny.en"
+    BASE = "base.en"
+    SMALL = "small.en"
+    MEDIUM = "medium.en"
+    LARGE = "large-v2"
+    LARGE_V3 = "large-v3"
 
 class AudioListener:
     """Audio listener that captures speech and sends to terminal"""
 
-    def __init__(self):
+    def __init__(self, model: Model = Model.TINY):
         self.recorder = None
         self.thread = None
         self.running = False
+        self.model = model
         self.callbacks = []
 
     def _audio_listener_thread(self):
         """Audio listening thread that captures speech and sends to terminal"""
         try:
-            self.recorder = AudioToTextRecorder(
-                model="tiny.en",
-                language="en",
-                compute_type="float32",
-                post_speech_silence_duration=1.2,
-                enable_realtime_transcription=False,
-                spinner=False,
-                print_transcription_time=False,
-                level=logging.CRITICAL,
-                no_log_file=True,
-                debug_mode=False,
-            )
-
-            while self.running:
-                try:
-                    def transcription_callback(text):
-                        if text and self.running:
-                            for callback in self.callbacks:
-                                callback(text)
-
-                    self.recorder.text(transcription_callback)
-
-                except Exception as e:
-                    logging.error(f"Error in audio processing: {e}")
-                    if not self.running:
-                        break
+            self.transcriber = WhisperModel(self.model.value, device="cpu", compute_type="int8")
+            self.recorder = AudioRecorder()
 
         except Exception as e:
             logging.error(f"Error initializing audio recorder: {e}")
@@ -67,12 +54,26 @@ class AudioListener:
         self.thread = threading.Thread(target=self._audio_listener_thread)
         self.thread.start()
 
+        while not self.recorder:
+            time.sleep(0.1)
+
     def stop(self):
         """Stop the audio listener"""
-        self.recorder.stop()
         self.running = False
         if self.thread and self.thread.is_alive():
             self.thread.join(timeout=1.0)
+
+    def sleep(self):
+        """Put the listener into sleeping mode - stops processing transcriptions"""
+        recording = self.recorder.stop()
+        segments, info = self.transcriber.transcribe(recording)
+        for callback in self.callbacks:
+            callback("".join([segment.text for segment in segments]))
+
+    def wake_up(self):
+        """Wake up the listener from sleeping mode - resumes processing transcriptions"""
+        self.recorder.start()
+
 
     def add_transcription_callback(self, callback: Callable[[str], None]):
         """

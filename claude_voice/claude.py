@@ -8,7 +8,7 @@ class ClaudeState(Enum):
 
 class Claude:
     def __init__(self):
-        self.terminal = Terminal("/bin/bash", ["/bin/bash", "-c", "claude", "--print"], enable_keyboard=True)
+        self.terminal = Terminal("/bin/bash", ["/bin/bash", "-c", "claude", "--print"], enable_keyboard=False)
         self.terminal.add_change_callback(self.on_output_change)
         self.log_file = open("claude.log", "w")
         self.state = ClaudeState.TEXT_INPUT
